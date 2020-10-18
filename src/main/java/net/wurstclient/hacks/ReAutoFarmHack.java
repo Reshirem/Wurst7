@@ -115,7 +115,7 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
         int blockRangeZ = (int) Math.ceil(rangez.getValue());
 
         List<BlockPos> blocks = getBlockStream(eyesBlock, blockRange, blockRangeZ)
-                .filter(pos -> eyesVec.squaredDistanceTo(new Vec3d(pos)) <= rangeSq)
+                .filter(pos -> eyesVec.squaredDistanceTo(Vec3d.of(pos)) <= rangeSq)
                 .filter(pos -> BlockUtils.canBeClicked(pos))
                 .collect(Collectors.toList());
 
@@ -128,18 +128,18 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
             blocksToHarvest =
                     blocks.parallelStream().filter(this::shouldBeHarvested)
                             .sorted(Comparator.comparingDouble(
-                                    pos -> eyesVec.squaredDistanceTo(new Vec3d(pos))))
+                                    pos -> eyesVec.squaredDistanceTo(Vec3d.of(pos))))
                             .collect(Collectors.toList());
 
             blocksToReplant = getBlockStream(eyesBlock, blockRange, blockRangeZ)
                     .filter(
-                            pos -> eyesVec.squaredDistanceTo(new Vec3d(pos)) <= rangeSq)
+                            pos -> eyesVec.squaredDistanceTo(Vec3d.of(pos)) <= rangeSq)
                     .filter(pos -> BlockUtils.getState(pos).getMaterial()
                             .isReplaceable())
                     .filter(pos -> plants.containsKey(pos))
                     .filter(this::canBeReplanted)
                     .sorted(Comparator.comparingDouble(
-                            pos -> eyesVec.squaredDistanceTo(new Vec3d(pos))))
+                            pos -> eyesVec.squaredDistanceTo(Vec3d.of(pos))))
                     .collect(Collectors.toList());
         }
 
@@ -159,12 +159,12 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
         }
         if (blocksToHarvest.isEmpty()) {
             ClientPlayerEntity player = MC.player;
-            start = new BlockPos(player);
+            start = new BlockPos(player.getPos());
             direction = player.getHorizontalFacing();
             length = 1;
 
             BlockPos base = start.offset(direction, length);
-            Vec3d vec = new Vec3d(base).add(0.5, 0.5, 0.5);
+            Vec3d vec = Vec3d.ofCenter(base);
             WURST.getRotationFaker().faceVectorClientIgnorePitch(vec);
 
             MC.options.keyForward.setPressed(true);
@@ -183,6 +183,7 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_CULL_FACE);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDisable(GL11.GL_LIGHTING);
 
         GL11.glPushMatrix();
         RenderUtils.applyRenderOffset();
@@ -303,7 +304,7 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
                 continue;
             }
 
-            ItemStack stack = player.inventory.getInvStack(slot);
+            ItemStack stack = player.inventory.getStack(slot);
             if (stack.isEmpty() || stack.getItem() != neededItem) {
                 continue;
             }
@@ -335,13 +336,13 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
         Direction[] sides = Direction.values();
 
         Vec3d eyesPos = RotationUtils.getEyesPos();
-        Vec3d posVec = new Vec3d(pos).add(0.5, 0.5, 0.5);
+        Vec3d posVec = Vec3d.of(pos).add(0.5, 0.5, 0.5);
         double distanceSqPosVec = eyesPos.squaredDistanceTo(posVec);
 
         Vec3d[] hitVecs = new Vec3d[sides.length];
         for (int i = 0; i < sides.length; i++) {
             hitVecs[i] =
-                    posVec.add(new Vec3d(sides[i].getVector()).multiply(0.5));
+                    posVec.add(Vec3d.of(sides[i].getVector()).multiply(0.5));
         }
 
         for (int i = 0; i < sides.length; i++) {
@@ -355,7 +356,7 @@ public final class ReAutoFarmHack extends Hack implements UpdateListener, Render
             BlockState neighborState = BlockUtils.getState(neighbor);
             VoxelShape neighborShape =
                     neighborState.getOutlineShape(MC.world, neighbor);
-            if (MC.world.rayTraceBlock(eyesPos, hitVecs[i], neighbor,
+            if (MC.world.raycastBlock(eyesPos, hitVecs[i], neighbor,
                     neighborShape, neighborState) != null) {
                 continue;
             }
